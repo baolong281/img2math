@@ -37,7 +37,7 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "vite build",
+    "build": "vite build && cp ./manifest.json ./dist",
     "test": "jest",
     "postinstall": "husky install"
   },
