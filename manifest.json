@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "img2math",
+  "description": "Convert images into TeX",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open"
+  },
+  "permissions": ["scripting"]
+}
