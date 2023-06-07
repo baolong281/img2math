@@ -1,4 +1,5 @@
 import React, { useEffect, useState, ClipboardEvent, ChangeEvent } from "react";
+import MainButton from "./MainButton";
 
 interface ImageBoxProps {
   setSelectedImage: React.Dispatch<React.SetStateAction<string | null>>;
@@ -57,12 +58,11 @@ const ImageBox: React.FC<ImageBoxProps> = ({
     >
       {selectedImage ? (
         <div className="">
-          <button
+          <MainButton
+            text="Clear image"
             onClick={clearImage}
-            className="bg-blue-600 rounded-full text-white p-2 absolute top-2 left-2 m-6"
-          >
-            Clear image
-          </button>
+            className="p-2 absolute top-2 left-2 m-6"
+          />
           <img
             src={selectedImage}
             alt="Pasted"
@@ -71,18 +71,17 @@ const ImageBox: React.FC<ImageBoxProps> = ({
         </div>
       ) : (
         <div className=" grid grid-cols-1 align-middle max mt-8">
-          <button
-            onClick={handleClick}
-            className="bg-blue-600 rounded-full max-h-14 px-6 text-white"
-          >
-            Upload image
-          </button>
           <input
             type="file"
             accept="image/"
             onChange={handleUploadImage}
             ref={hiddenFileInput}
             style={{ display: "none" }}
+          />
+          <MainButton
+            text="Upload Image"
+            onClick={handleClick}
+            className="text-2xl"
           />
           <div className="flex align-middle justify-center font-semibold">
             Or drop / paste
