@@ -1,1 +1,1 @@
-max model size ~50mb = 50,000,000 parameters quantized
+max parameters: ~100 million 8 bit **quantized**
