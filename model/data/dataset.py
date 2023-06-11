@@ -42,6 +42,7 @@ class Im2LatexDataset:
         transform = transforms.Compose(
             [
                 transforms.Resize((224, 600)),  # Resize to a specific size
+                transforms.Grayscale(num_output_channels=3),
                 transforms.ToTensor(),  # Convert to tensor
             ]
         )
