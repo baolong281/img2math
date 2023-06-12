@@ -1986,7 +1986,6 @@ $(a_1 b_2 + a_2 b_1 + a_3 b_4 - a_4 b_3)^2$,../data/handwritten/train/formulaire
  \mbox { E } ,../data/handwritten/train/200923-1553-3.png
 \int_{\log 3}^0 \frac 1 {e^t + 1} d t,../data/handwritten/train/KME2G3_16_sub_74.png
  \mbox { j } ,../data/handwritten/train/2009210-947-221.png
-,../data/handwritten/train/MfrDB0992.png
 $(46 \div (10 - 189)) \times 144 \neq -3$,../data/handwritten/train/formulaire035-equation050.png
  13 + \pi r ^ 2 ,../data/handwritten/train/200923-1251-37.png
  \mbox { X } ,../data/handwritten/train/200923-131-81.png
