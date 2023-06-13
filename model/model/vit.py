@@ -1,38 +1,100 @@
+from typing import Any
 import torch
 import torch.nn as nn
 import lightning as L
+import torch.nn.functional as F
+from torchmetrics.classification import BinaryAccuracy
+from torch.optim import Adam
 
 
-class ViT(nn.Module):
-    def __init__(self, img_shape, patch_size, n_embd, num_blocks=6, num_heads=8, dropout=.20, chanels=1):
+class ViT(L.LightningModule):
+    def __init__(self, img_shape, patch_size, n_embd, num_blocks=6, num_heads=8, dropout=.20, channels=1, output_classes=2, encoder=True, lr=1e-3):
         super().__init__()
         H, W = img_shape
         assert W % patch_size == 0 and H % patch_size == 0, 'image not divisable by patch size'
+        self.lr = 1e-3
         self.shape = img_shape
         self.patch_size = patch_size
         self.num_patches = (W // patch_size) * (H // patch_size)
+        self.encoder = encoder
+        self.output_classes = output_classes
+        self.pos_embd_len = self.num_patches + 1 if not encoder else self.num_patches
+        self.classification = not encoder
 
-        self.patch_embeddings = PatchEmbeddings(img_shape, patch_size, channels=chanels, n_embd=n_embd)
+        self.patch_embeddings = PatchEmbeddings(img_shape, patch_size, channels=channels, n_embd=n_embd)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, n_embd))
-        self.pos_embed = nn.Parameter(torch.zeros(1, 1 + self.num_patches, n_embd))
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.pos_embd_len, n_embd))
+        self.pos_dropout = nn.Dropout(dropout)
         self.transformer_blocks = nn.ModuleList(
             [
                 TransformerBlock(n_embd, num_heads=8) for _ in range(num_blocks)
             ]
         )
         self.ln = nn.LayerNorm(n_embd, eps=1e-5)
-        self.head = nn.Linear(n_embd, n_embd)
+
+        if not encoder:
+            self.head = nn.Linear(n_embd, output_classes)
+        else:
+            self.head = nn.Linear(n_embd, n_embd)
+        
+        self.save_hyperparameters()
+
     
     def forward(self, x):
-        B = x.shape[0]
-        cls_tokens = self.cls_token.expand(B, -1, -1)
-        img_patches = torch.cat([self.patch_embeddings(x), cls_tokens], dim=-2)
-        enc = img_patches + self.pos_embed
         """
         x: (B, channels, H, W)
         return: (B, n_embd)
         """
-        return enc
+        B = x.shape[0]
+
+        if not self.encoder:
+            cls_tokens = self.cls_token.expand(B, -1, -1)
+            img_patches = torch.cat([self.patch_embeddings(x), cls_tokens], dim=-2)
+        else:
+            img_patches = self.patch_embeddings(x)
+
+        enc = img_patches + self.pos_embed
+        x = self.pos_dropout(enc)
+        for block in self.transformer_blocks:
+            x = block(x)
+
+        x = self.ln(x)
+        if not self.encoder:
+            cls_token = x[:, 0]
+            x = self.head(cls_token)
+        else:
+            x = self.head(x)
+        return x
+    
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+
+        if self.classification:
+            loss = F.binary_cross_entropy_with_logits(preds, y)
+            accuracy = BinaryAccuracy().to(torch.device('mps'))
+            accuracy = accuracy(preds, y)
+        self.log('train loss', loss)
+        self.log('train accuracy', accuracy)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        preds = self.forward(x)
+
+        if self.classification:
+            loss = F.binary_cross_entropy_with_logits(preds, y)
+            accuracy = BinaryAccuracy().to('mps')
+            accuracy = accuracy(preds, y)
+        self.log('train loss', loss)
+        self.log('train accuracy', accuracy)
+        return preds
+
+    def configure_optimizers(self) -> Any:
+        return Adam(self.parameters(), lr=self.lr)
+    
+    def get_num_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
 
@@ -60,10 +122,11 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(n_embd, 4 * n_embd, bias=True)
         self.c_proj = nn.Linear(4 * n_embd, n_embd, bias=bias)
         self.dropout = nn.Dropout(dropout)
+        self.activation = nn.GELU()
 
     def forward(self, x):
         x = self.c_fc(x)
-        x = nn.GELU(x)
+        x = self.activation(x)
         x = self.c_proj(x)
         x = self.dropout(x)
         return x
@@ -75,12 +138,13 @@ class PatchEmbeddings(nn.Module):
         img size: image shape
         """
         super().__init__()
-        H, W = img_size
+        self.H, self.W = img_size
         assert (
-            W % patch_size == 0 and H % patch_size == 0
+            self.W % patch_size == 0 and self.H % patch_size == 0
         ), "image not divisable by patch size"
         self.patch_size = patch_size
-        self.n_patches = (H // patch_size) * (W // patch_size)
+        self.n_patches = (self.H // patch_size) * (self.W // patch_size)
+        self.n_embd = n_embd
 
         self.projection = nn.Conv2d(
             channels,
@@ -97,6 +161,11 @@ class PatchEmbeddings(nn.Module):
         x = self.projection(x)  # (B, n_embd, n_patches / 2, n_patches / 2)
         x = x.flatten(-2)  # (B, n_embd, n_patches)
         x = x.transpose(-2, -1)  # (B, n_patches, n_embd)
+        #im = x[0, :]
+        #print(im.shape)
+        #im = im.reshape(self.n_patches, self.patch_size, self.patch_size).detach().numpy()
+        #for i in im:
+            #plt.imshow(i, cmap='gray')
         return x
 
 
@@ -138,7 +207,6 @@ class SelfAttention(nn.Module):
         aggregated_attention = (
             attention @ v
         )  # (B, n_heads, T, T) @ (B, n_heads, T, head_dim) -> (B, n_heads, T, head_dim)
-        print(aggregated_attention.shape)
         x = aggregated_attention.transpose(1, 2)  # (B, T, n_heads, C)
         x = x.flatten(2)  # (B, T, C)
         x = self.projection(x)  # (B, T, C)
