@@ -135,4 +135,5 @@ dist
 images/
 handwritten/
 __pycache__
+wandb
 
