@@ -35,6 +35,7 @@ class Im2LatexDataset:
         self,
         block_size=216,
         batch_size=32,
+        img_dims=[224,640],
         device=torch.device("cpu"),
         path_to_data="./",
         tokenizer="./tokenizer.json",
@@ -45,10 +46,14 @@ class Im2LatexDataset:
         self.batch_size = batch_size
         self.block_size = block_size
         dfs = (train_df, val_df, test_df) = self.load_dataframes()
-        train_dataset, val_dataset, test_dataset = self.load_datasets(*dfs)
+        train_dataset, val_dataset, test_dataset = self.load_datasets(*dfs, img_dims)
+        H, W = img_dims
 
+
+        #define what happens when batches are collected
         def collate_fn(batch):
             images, equations = zip(*batch)
+            images = torch.cat(images).view(-1, 1, H, W) # convert from tuple into batched tensor (B, C, H, W)
             tokens = self.tokenizer.batch_encode_plus(
                 equations,
                 padding="max_length",
@@ -71,11 +76,11 @@ class Im2LatexDataset:
         )
 
     def load_datasets(
-        self, train_df, val_df, test_df
+        self, train_df, val_df, test_df, img_dims
     ) -> tuple[ImagesDataset, ImagesDataset, ImagesDataset]:
         transform = transforms.Compose(
             [
-                transforms.Resize((224, 600)),  # Resize to a specific size
+                transforms.Resize(img_dims),  # Resize to a specific size
                 transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),  # Convert to tensor
             ]
