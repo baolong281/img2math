@@ -94,6 +94,7 @@ class Im2LatexDataset:
                 transforms.Resize(img_dims),  # Resize to a specific size
                 transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),  # Convert to tensor
+                transforms.Normalize((0.5,), (0.5,))
             ]
         )
 
