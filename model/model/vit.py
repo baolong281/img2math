@@ -3,27 +3,28 @@ import torch
 import torch.nn as nn
 import lightning as L
 import torch.nn.functional as F
-from torchmetrics.classification import BinaryAccuracy
+from torchmetrics.classification import Accuracy
 from torch.optim import Adam
+import wandb
 
 
 class ViT(L.LightningModule):
-    def __init__(self, img_shape, patch_size, n_embd, num_blocks=6, num_heads=8, dropout=.20, channels=1, output_classes=2, encoder=True, lr=1e-3):
+    def __init__(self, img_shape, patch_size, n_embd, num_blocks=6, num_heads=8, dropout=.20, channels=1, output_classes=2, encoder=True, lr=1e-4):
         super().__init__()
         H, W = img_shape
         assert W % patch_size == 0 and H % patch_size == 0, 'image not divisable by patch size'
-        self.lr = 1e-3
+        self.lr = lr
         self.shape = img_shape
         self.patch_size = patch_size
         self.num_patches = (W // patch_size) * (H // patch_size)
         self.encoder = encoder
         self.output_classes = output_classes
         self.pos_embd_len = self.num_patches + 1 if not encoder else self.num_patches
-        self.classification = not encoder
-
-        self.patch_embeddings = PatchEmbeddings(img_shape, patch_size, channels=channels, n_embd=n_embd)
+        self.patch_embeddings = PatchEmbeddings(
+            img_shape, patch_size, channels=channels, n_embd=n_embd)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, n_embd))
-        self.pos_embed = nn.Parameter(torch.zeros(1, self.pos_embd_len, n_embd))
+        self.pos_embed = nn.Parameter(
+            torch.zeros(1, self.pos_embd_len, n_embd))
         self.pos_dropout = nn.Dropout(dropout)
         self.transformer_blocks = nn.ModuleList(
             [
@@ -31,15 +32,18 @@ class ViT(L.LightningModule):
             ]
         )
         self.ln = nn.LayerNorm(n_embd, eps=1e-5)
+        self.loss = nn.BCELoss()
+        self.accuracy = Accuracy(
+            task='binary', num_classes=1).to(self.device)
 
         if not encoder:
-            self.head = nn.Linear(n_embd, output_classes)
+            self.head = nn.Sequential(
+                MLP(n_embd), nn.Linear(n_embd, output_classes))
         else:
             self.head = nn.Linear(n_embd, n_embd)
-        
+
         self.save_hyperparameters()
 
-    
     def forward(self, x):
         """
         x: (B, channels, H, W)
@@ -49,7 +53,8 @@ class ViT(L.LightningModule):
 
         if not self.encoder:
             cls_tokens = self.cls_token.expand(B, -1, -1)
-            img_patches = torch.cat([self.patch_embeddings(x), cls_tokens], dim=-2)
+            img_patches = torch.cat(
+                [self.patch_embeddings(x), cls_tokens], dim=-2)
         else:
             img_patches = self.patch_embeddings(x)
 
@@ -65,37 +70,48 @@ class ViT(L.LightningModule):
         else:
             x = self.head(x)
         return x
-    
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         preds = self.forward(x)
 
-        if self.classification:
-            loss = F.binary_cross_entropy_with_logits(preds, y)
-            accuracy = BinaryAccuracy().to(torch.device('mps'))
-            accuracy = accuracy(preds, y)
-        self.log('train loss', loss)
-        self.log('train accuracy', accuracy)
+        if self.output_classes > 1:
+            loss = F.cross_entropy(preds, y)
+            accuracy = self.accuracy(preds, y)
+        else:
+            loss = self.loss(preds, y)
+            accuracy = self.accuracy(preds, y)
+
+        self.log('train/loss', loss, on_step=True)
+        self.log('train/accuracy', accuracy, on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         preds = self.forward(x)
 
-        if self.classification:
-            loss = F.binary_cross_entropy_with_logits(preds, y)
-            accuracy = BinaryAccuracy().to('mps')
-            accuracy = accuracy(preds, y)
-        self.log('train loss', loss)
-        self.log('train accuracy', accuracy)
+        if self.output_classes > 1:
+            loss = F.cross_entropy(preds, y)
+            accuracy = self.accuracy(preds, y)
+        else:
+            loss = self.loss(preds, y)
+            accuracy = self.accuracy(preds, y)
+
+        self.log('val/loss', loss, on_step=True)
+        self.log('val/accuracy', accuracy, on_step=True)
         return preds
+
+    def val_epoch_end(self, test_step_outputs):
+        dummy_input = torch.zeros(1, 1, self.H, self.W)
+        model_name = 'vit.onnx'
+        torch.onnx.export(self, dummy_input, model_name)
+        wandb.save(model_name)
 
     def configure_optimizers(self) -> Any:
         return Adam(self.parameters(), lr=self.lr)
-    
+
     def get_num_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
 
 
 class TransformerBlock(nn.Module):
@@ -119,8 +135,8 @@ class TransformerBlock(nn.Module):
 class MLP(nn.Module):
     def __init__(self, n_embd, dropout=0.20, bias=True):
         super().__init__()
-        self.c_fc = nn.Linear(n_embd, 4 * n_embd, bias=True)
-        self.c_proj = nn.Linear(4 * n_embd, n_embd, bias=bias)
+        self.c_fc = nn.Linear(n_embd, 2 * n_embd, bias=True)
+        self.c_proj = nn.Linear(2 * n_embd, n_embd, bias=bias)
         self.dropout = nn.Dropout(dropout)
         self.activation = nn.GELU()
 
@@ -161,11 +177,11 @@ class PatchEmbeddings(nn.Module):
         x = self.projection(x)  # (B, n_embd, n_patches / 2, n_patches / 2)
         x = x.flatten(-2)  # (B, n_embd, n_patches)
         x = x.transpose(-2, -1)  # (B, n_patches, n_embd)
-        #im = x[0, :]
-        #print(im.shape)
-        #im = im.reshape(self.n_patches, self.patch_size, self.patch_size).detach().numpy()
-        #for i in im:
-            #plt.imshow(i, cmap='gray')
+        # im = x[0, :]
+        # print(im.shape)
+        # im = im.reshape(self.n_patches, self.patch_size, self.patch_size).detach().numpy()
+        # for i in im:
+        # plt.imshow(i, cmap='gray')
         return x
 
 
