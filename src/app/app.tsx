@@ -20,6 +20,7 @@ const App = (): JSX.Element => {
   const [textBox, setTextBox] = useState<string>("");
 
   const inference = async () => {
+    if (!selectedImage) return;
     const model = await modelPromise;
     let input = await getImageTensor(selectedImage);
     const feeds = { "input.1": input };
