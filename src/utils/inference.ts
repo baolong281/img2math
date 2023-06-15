@@ -5,7 +5,9 @@ import * as onnx from "onnxruntime-web";
 const getImageTensor = async (path: string | null) => {
   if (!path) return;
   const img = await Image.load(path);
-  const resized = img.grey().resize({ height: 28, width: 28 });
+  const resized = img
+    .grey()
+    .resize({ height: 28, width: 28, interpolation: "nearestNeighbor" });
   const normalizedImage = normalizeImage(resized);
   return imageDataToTensor(normalizedImage);
 };
@@ -31,8 +33,13 @@ const imageDataToTensor = (imageMatrix: Matrix): onnx.Tensor => {
 
 const normalizeImage = (image: Image) => {
   let mat: Matrix = image.getMatrix().div(255);
-  const mean = mat.mean();
-  const std = mat.standardDeviation();
+  let mean = mat.mean();
+  let std = mat.standardDeviation();
+
+  //sometimes image resized turns all white and everything turns into nan
+  if (mean == 0) mean = 1;
+  if (std == 0) std = 1;
+
   return mat.subtract(mean).divide(std);
 };
 
