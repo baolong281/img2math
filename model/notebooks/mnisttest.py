@@ -1,17 +1,7 @@
 import sys
 sys.path.append("../")
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from torchvision import transforms
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image
-from tqdm.auto import tqdm
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
 import torchvision
 from model.vit import ViT
 import lightning as L
@@ -22,6 +12,7 @@ BATCH_SIZE = 64
 img_dims = [28, 28]
 model = ViT(img_dims, 4, n_embd=256, encoder=False, output_classes=10, num_blocks=6, dropout=.60)
 #model = ViT.load_from_checkpoint('./mnisttest/zc5enho0/checkpoints/epoch=4-step=2420.ckpt')
+
 
 train_loader = torch.utils.data.DataLoader(
     torchvision.datasets.MNIST('./files/', train=True, download=True,
