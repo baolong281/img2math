@@ -137,3 +137,5 @@ handwritten/
 __pycache__
 wandb
 
+.ipynb_checkpoints
+
