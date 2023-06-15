@@ -2,8 +2,7 @@ import Image from "image-js";
 import Matrix from "ml-matrix";
 import * as onnx from "onnxruntime-web";
 
-const getImageTensor = async (path: string | null) => {
-  if (!path) return;
+const getImageTensor = async (path: string) => {
   const img = await Image.load(path);
   const resized = img
     .grey()
