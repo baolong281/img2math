@@ -3,11 +3,16 @@ import React, { useState, ChangeEvent, useEffect } from "react";
 interface InputBoxProps {
   setTex: React.Dispatch<React.SetStateAction<string>>;
   tex: string;
+  setTextBox: React.Dispatch<React.SetStateAction<string>>;
+  textBox: string;
 }
 
-const InputBox: React.FC<InputBoxProps> = ({ tex, setTex }): JSX.Element => {
-  const [textBox, setTextBox] = useState("");
-
+const InputBox: React.FC<InputBoxProps> = ({
+  tex,
+  setTex,
+  textBox,
+  setTextBox,
+}): JSX.Element => {
   useEffect(() => {
     setTex(convertToKatex(textBox));
   }, [textBox]);

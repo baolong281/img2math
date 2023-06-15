@@ -17,19 +17,26 @@ let modelPromise = createSession();
 const App = (): JSX.Element => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [tex, setTex] = useState<string>("");
+  const [textBox, setTextBox] = useState<string>("");
 
   const inference = async () => {
     const model = await modelPromise;
     let input = await getImageTensor(selectedImage);
     const feeds = { "input.1": input };
     const results = await model.run(feeds);
-    console.log(results["241"].data);
-    return results["241"].data;
+    const logits = results["241"].data as Float32Array;
+    const prediction = getPredictionFromLogits(logits);
+    setTextBox(`PREDICTION: ${prediction}`);
+    return logits;
+  };
+
+  const getPredictionFromLogits = (logits: Float32Array) => {
+    return logits.indexOf(Math.max(...logits));
   };
 
   useEffect(() => {
     if (!selectedImage) return;
-    const results = inference();
+    inference();
   }, [selectedImage]);
 
   return (
@@ -38,7 +45,12 @@ const App = (): JSX.Element => {
         selectedImage={selectedImage}
         setSelectedImage={setSelectedImage}
       />
-      <InputBox tex={tex} setTex={setTex} />
+      <InputBox
+        tex={tex}
+        setTex={setTex}
+        textBox={textBox}
+        setTextBox={setTextBox}
+      />
       <MathBox tex={tex} />
     </div>
   );
