@@ -3,10 +3,21 @@ import InputBox from "components/InputBox";
 import MathBox from "components/MathBox";
 import React, { useEffect, useState } from "react";
 import * as onnx from "onnxruntime-web";
+import Image from "image-js";
 
 const App = (): JSX.Element => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [tex, setTex] = useState<string>("");
+
+  const getImageTensor = async (path: string | null) => {
+    if (!path) return;
+    const image = await Image.load(path);
+    console.log(image);
+  };
+
+  useEffect(() => {
+    getImageTensor(selectedImage);
+  }, [selectedImage]);
 
   useEffect(() => {
     const inference = async () => {

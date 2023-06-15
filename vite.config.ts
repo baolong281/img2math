@@ -14,6 +14,11 @@ export default defineConfig((configEnv) => {
         hooks: resolve(__dirname, "src", "hooks"),
       },
     },
+    // build: {
+    //   rollupOptions: {
+    //     external: ["fs", "path", "os"],
+    //   },
+    // },
     css: {
       modules: {
         generateScopedName: isDevelopment
