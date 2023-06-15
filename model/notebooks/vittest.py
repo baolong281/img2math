@@ -1,18 +1,8 @@
 import sys
 sys.path.append("../")
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from torchvision import transforms
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image
-from tqdm.auto import tqdm
-from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
-import torchvision
+from lightning.pytorch.loggers.wandb import WandbLogger
 from model.vit import ViT
 from data.dataset import Im2LatexDataset
 import lightning as L
