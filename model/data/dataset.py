@@ -4,8 +4,6 @@ from torchvision import transforms
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from transformers import PreTrainedTokenizerFast
-from torch.nn.utils.rnn import pad_sequence
-import os
 
 
 class ImagesDataset(Dataset):
@@ -65,15 +63,29 @@ class Im2LatexDataset:
                 labels = torch.tensor([float(val) for val in labels]).reshape(-1, 1)
                 return images, labels
 
-            tokens = self.tokenizer.batch_encode_plus(
+            # tokens = self.tokenizer.batch_encode_plus(
+            #     labels,
+            #     padding="max_length",
+            #     truncation=True,
+            #     return_tensors="pt",
+            #     return_token_type_ids=False,
+            #     max_length=self.block_size,
+            #     pad_to_max_length=True,
+            #     add_special_tokens=True
+            # )
+
+            labels = ['[BOS]' + eq + '[EOS]' for eq in labels]
+            tokens = self.tokenizer(
                 labels,
-                padding="max_length",
-                truncation=True,
-                return_tensors="pt",
+                padding="max_length", 
+                truncation=True, 
+                return_tensors='pt', 
                 return_token_type_ids=False,
                 max_length=self.block_size,
                 pad_to_max_length=True,
+                add_special_tokens=True
             )
+
             return images, tokens
 
         self.train = DataLoader(
