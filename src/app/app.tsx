@@ -18,7 +18,6 @@ const App = (): JSX.Element => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [tex, setTex] = useState<string>("");
   const [textBox, setTextBox] = useState<string>("");
-
   const inference = async () => {
     if (!selectedImage) return;
     const model = await modelPromise;

@@ -15,6 +15,7 @@ const InputBox: React.FC<InputBoxProps> = ({
 }): JSX.Element => {
   useEffect(() => {
     setTex(convertToKatex(textBox));
+    console.log(tex);
   }, [textBox]);
 
   const updateTeX = (text: string) => {
