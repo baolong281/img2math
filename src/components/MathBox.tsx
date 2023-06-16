@@ -1,5 +1,4 @@
-import React, { useState, ChangeEvent } from "react";
-import MainButton from "./MainButton";
+import React, { useState } from "react";
 import { BlockMath } from "react-katex";
 import "katex/dist/katex.min.css";
 
@@ -8,18 +7,13 @@ interface MathBoxProps {
 }
 
 const MathBox: React.FC<MathBoxProps> = ({ tex }): JSX.Element => {
-  const handleClick = () => {};
-
-  //<div
-  //dangerouslySetInnerHTML={{ __html: doc.documentElement.outerHTML }}
-  //></div>
-
   return (
-    <div>
-      <div className="flex justify-center align-middle">TeX Preview</div>
-      <div className="p-4 resize-none h-1/3 w-full flex flex-col justify-center align-middle gap-4 mt-8">
+    <div className="">
+      <div className="flex font-bold justify-center align-middle">
+        TeX Preview
+      </div>
+      <div className="mb-6 text-2xl h-3/4 gap-6 flex flex-col justify-center align-middle">
         <BlockMath math={tex} />
-        <MainButton text="Copy image to clipboard" onClick={handleClick} />
       </div>
     </div>
   );
