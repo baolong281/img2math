@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torchmetrics.classification import Accuracy
 from torch.optim import Adam
 import wandb
-from model.transformer import TransformerBlock, MLP
+from model.transformer import EncoderTransformerBlock, MLP
 
 
 class ViT(L.LightningModule):
@@ -29,7 +29,7 @@ class ViT(L.LightningModule):
         self.pos_dropout = nn.Dropout(dropout)
         self.transformer_blocks = nn.ModuleList(
             [
-                TransformerBlock(n_embd, num_heads, dropout) for _ in range(num_blocks)
+                EncoderTransformerBlock(n_embd, num_heads, dropout) for _ in range(num_blocks)
             ]
         )
         self.ln = nn.LayerNorm(n_embd, eps=1e-5)
