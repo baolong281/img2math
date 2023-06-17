@@ -36,7 +36,7 @@ class ImagesDataset(Dataset):
 class Im2LatexDataset:
     def __init__(
         self,
-        block_size=216,
+        block_size=256,
         batch_size=32,
         img_dims=[224,640],
         device=torch.device("cpu"),
@@ -44,7 +44,7 @@ class Im2LatexDataset:
         tokenizer="./tokenizer.json",
         classification=False,
     ):
-        self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer)
+        self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer, padding_side='left')
         self.tokenizer.pad_token = "[PAD]"
         self.path_to_data = path_to_data
         self.batch_size = batch_size
@@ -83,7 +83,7 @@ class Im2LatexDataset:
                 return_token_type_ids=False,
                 max_length=self.block_size,
                 pad_to_max_length=True,
-                add_special_tokens=True
+                add_special_tokens=True,
             )
 
             return images, tokens
