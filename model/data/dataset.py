@@ -1,6 +1,7 @@
 import torch
 import pandas as pd
 from torchvision import transforms
+from torchvision.transforms.functional import adjust_contrast
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from transformers import PreTrainedTokenizerFast
@@ -74,7 +75,7 @@ class Im2LatexDataset:
             #     add_special_tokens=True
             # )
 
-            labels = ['[BOS]' + eq + '[EOS]' for eq in labels]
+            labels = ['[BOS]' + str(eq) + '[EOS]' for eq in labels]
             tokens = self.tokenizer(
                 labels,
                 padding="max_length", 
@@ -105,6 +106,7 @@ class Im2LatexDataset:
             [
                 transforms.Resize(img_dims),  # Resize to a specific size
                 transforms.Grayscale(num_output_channels=1),
+                transforms.Lambda(lambda x: adjust_contrast(x, 2)),
                 transforms.ToTensor(),  # Convert to tensor
                 transforms.Normalize((0.5,), (0.5,))
             ]
