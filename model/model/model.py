@@ -38,7 +38,7 @@ class Img2MathModel(L.LightningModule):
     def training_step(self, batch, batch_idx):
         img, labels = batch
         trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-        zero = torch.zeros(1, 1).to(self.device)
+        zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
         input_seq = torch.cat((zero, trg_seq), dim=-1)
         input_seq = input_seq[:, :-1].int()
         input_mask = torch.cat((zero, input_mask), dim=-1)
@@ -52,7 +52,7 @@ class Img2MathModel(L.LightningModule):
     def validation_step(self, batch, batch_idx):
         img, labels = batch
         trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-        zero = torch.zeros(1, 1).to(self.device)
+        zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
         input_seq = torch.cat((zero, trg_seq), dim=-1)
         input_seq = input_seq[:, :-1].int()
         input_mask = torch.cat((zero, input_mask), dim=-1)
