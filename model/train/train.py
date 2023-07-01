@@ -10,8 +10,8 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description='Get train args')
-parser.add_argument("batch_size")
-parser.add_argument("epochs")
+parser.add_argument('--batch_size', type=int)
+parser.add_argument('--epochs', type=int)
 
 args = parser.parse_args()
 
