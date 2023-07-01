@@ -23,7 +23,7 @@ class Decoder(nn.Module):
 
     def forward(self, input_seq, enc_output, trg_seq=None,  mask=None):
         input_embeddings = self.word_embeddings(input_seq)
-        input_embeddings = input_embeddings+ self.pos_embed
+        input_embeddings = input_embeddings + self.pos_embed
         x = self.ln(input_embeddings)
 
         for layer in self.transformer_blocks:
@@ -100,7 +100,8 @@ class DecoderAttention(nn.Module):
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
 
         if mask is not None:
-            mask = mask.unsqueeze(1)   # For head axis broadcasting.
+            mask = mask.unsqueeze(1)
+            mask = mask.unsqueeze(1)
             if mask.dtype != torch.float32:
                 mask = mask.float()
 
