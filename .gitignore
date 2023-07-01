@@ -132,8 +132,6 @@ dist
 .DS_Store
 .vscode
 
-images/
-handwritten/
 __pycache__
 wandb
 
