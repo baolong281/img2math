@@ -18,8 +18,7 @@ class Img2MathModel(L.LightningModule):
         self.patch_size = patch_size
         self.encoder_blocks = encoder_blocks
         self.decoder_blocks = decoder_blocks
-        self.num_heads = num_heads
-        self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
+        self.num_heads = num_heads self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
         self.decoder = Decoder(n_embd, block_size, vocab_size, dropout, num_blocks=decoder_blocks, num_heads=num_heads)
         self.lr = lr
         self.save_hyperparameters()
@@ -36,31 +35,41 @@ class Img2MathModel(L.LightningModule):
         return logits, loss 
 
     def training_step(self, batch, batch_idx):
-        img, labels = batch
-        trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-        zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
-        input_seq = torch.cat((zero, trg_seq), dim=-1)
-        input_seq = input_seq[:, :-1].int()
-        input_mask = torch.cat((zero, input_mask), dim=-1)
-        input_mask= input_mask[:, :-1].int()
+        try:
+            img, labels = batch
+            trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
+            zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
+            input_seq = torch.cat((zero, trg_seq), dim=-1)
+            input_seq = input_seq[:, :-1].int()
+            input_mask = torch.cat((zero, input_mask), dim=-1)
+            input_mask= input_mask[:, :-1].int()
 
-        _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=input_mask)
-        self.log('train/loss', loss, on_step=True)
-        return loss
+            _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=input_mask)
+            self.log('train/loss', loss, on_step=True)
+            return loss
+        except:
+            a = torch.ones(1)
+            b = torch.ones(1)
+            return a + b
 
 
     def validation_step(self, batch, batch_idx):
-        img, labels = batch
-        trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-        zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
-        input_seq = torch.cat((zero, trg_seq), dim=-1)
-        input_seq = input_seq[:, :-1].int()
-        input_mask = torch.cat((zero, input_mask), dim=-1)
-        input_mask= input_mask[:, :-1].int()
+        try:
+            img, labels = batch
+            trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
+            zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
+            input_seq = torch.cat((zero, trg_seq), dim=-1)
+            input_seq = input_seq[:, :-1].int()
+            input_mask = torch.cat((zero, input_mask), dim=-1)
+            input_mask= input_mask[:, :-1].int()
 
-        _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=input_mask)
-        self.log('val/loss', loss, on_step=True)
-        return loss
+            _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=input_mask)
+            self.log('val/loss', loss, on_step=True)
+            return loss
+        except:
+            a = torch.ones(1)
+            b = torch.ones(1)
+            return a + b
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.lr)
