@@ -22,6 +22,7 @@ def main():
     print('******* train parameters *******')
     print(f"epochs: {EPOCHS}")
     print(f"batch size: {BATCH_SIZE}")
+    print('********************************')
 
     img_dims = [256, 256]
     data = Im2LatexDataset(path_to_data="../data/",
