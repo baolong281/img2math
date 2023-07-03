@@ -18,7 +18,8 @@ class Img2MathModel(L.LightningModule):
         self.patch_size = patch_size
         self.encoder_blocks = encoder_blocks
         self.decoder_blocks = decoder_blocks
-        self.num_heads = num_heads self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
+        self.num_heads = num_heads 
+        self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
         self.decoder = Decoder(n_embd, block_size, vocab_size, dropout, num_blocks=decoder_blocks, num_heads=num_heads)
         self.lr = lr
         self.save_hyperparameters()
