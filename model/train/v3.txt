@@ -1,0 +1,21 @@
+wandb: Currently logged in as: baolong. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.15.4
+wandb: Run data is saved locally in ./wandb/run-20230703_150930-54ejnwho
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run brisk-fog-21
+wandb: ⭐️ View project at https://wandb.ai/baolong/img2math
+wandb: 🚀 View run at https://wandb.ai/baolong/img2math/runs/54ejnwho
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+/anaconda/envs/pytorch/lib/python3.11/site-packages/lightning/pytorch/trainer/call.py:52: UserWarning: Detected KeyboardInterrupt, attempting graceful shutdown...
+  rank_zero_warn("Detected KeyboardInterrupt, attempting graceful shutdown...")
+wandb: Waiting for W&B process to finish... (success).
+wandb: - 0.002 MB of 0.002 MB uploaded (0.000 MB deduped)wandb: \ 0.005 MB of 0.016 MB uploaded (0.002 MB deduped)wandb: | 0.005 MB of 0.016 MB uploaded (0.002 MB deduped)wandb: 🚀 View run brisk-fog-21 at: https://wandb.ai/baolong/img2math/runs/54ejnwho
+wandb: Synced 6 W&B file(s), 0 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20230703_150930-54ejnwho/logs
+******* train parameters *******
+epochs: 15
+batch size: 16
+********************************
