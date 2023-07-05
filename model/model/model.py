@@ -22,6 +22,7 @@ class Img2MathModel(L.LightningModule):
         self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
         self.decoder = Decoder(n_embd, block_size, vocab_size, dropout, num_blocks=decoder_blocks, num_heads=num_heads)
         self.lr = lr
+        self.encodings = None
         self.save_hyperparameters()
 
     def forward(self, img, input_seq=None, trg_seq=None,  mask=None):
@@ -31,10 +32,10 @@ class Img2MathModel(L.LightningModule):
             input_seq = torch.zeros((B, self.block_size), dtype=torch.int)
             input_seq[: -1] = 1
 
-        if self.encodings:
-            encodings = self.encodings
-        else:
-            encodings = self.encoder(img)
+        if not self.encodings:
+            self.encodings = self.encoder(img)
+
+        encodings = self.encodings
 
         logits, loss = self.decoder(input_seq, encodings, trg_seq=trg_seq, mask=mask)
         return logits, loss 
