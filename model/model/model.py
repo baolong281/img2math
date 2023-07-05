@@ -28,12 +28,31 @@ class Img2MathModel(L.LightningModule):
         #make dummy input seqs for each bach with last element being BOS token
         if input_seq is None:
             B = img.shape[0]
-            input_seq = torch.zeros((B, 256), dtype=torch.int)
+            input_seq = torch.zeros((B, self.block_size), dtype=torch.int)
             input_seq[: -1] = 1
 
-        encodings = self.encoder(img)
+        if self.encodings:
+            encodings = self.encodings
+        else:
+            encodings = self.encoder(img)
+
         logits, loss = self.decoder(input_seq, encodings, trg_seq=trg_seq, mask=mask)
         return logits, loss 
+
+    def generate(self, img):
+        sequence = torch.zeros((self.block_size, ), dtype=torch.int)
+        sequence[: -1] = 1
+
+        for i in range(self.block_size):
+            logits, _ = self.forward(img, input_seq=sequence)
+            pred = torch.argmax(logits)
+            sequence = torch.cat((sequence, pred))
+            sequence = sequence[1:]
+
+        return sequence
+
+            
+        
 
     def training_step(self, batch, batch_idx):
         try:
