@@ -30,9 +30,9 @@ class Img2MathModel(L.LightningModule):
         if input_seq is None:
             B = img.shape[0]
             input_seq = torch.zeros((B, self.block_size), dtype=torch.int)
-            input_seq[: -1] = 1
+            input_seq[-1] = 1
 
-        if not self.encodings:
+        if self.encodings is None:
             self.encodings = self.encoder(img)
 
         encodings = self.encodings
@@ -42,12 +42,12 @@ class Img2MathModel(L.LightningModule):
 
     def generate(self, img):
         sequence = torch.zeros((self.block_size, ), dtype=torch.int).to(self.device)
-        sequence[: -1] = 1
+        sequence[-1] = 1
 
         for i in range(self.block_size):
             logits, _ = self.forward(img, input_seq=sequence)
-            pred = torch.argmax(logits)
-            sequence = torch.cat((sequence, pred))
+            pred = torch.argmax(logits).view(1)
+            sequence = torch.cat((sequence, pred)).int()
             sequence = sequence[1:]
 
         return sequence
