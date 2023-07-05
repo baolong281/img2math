@@ -41,7 +41,7 @@ class Img2MathModel(L.LightningModule):
         return logits, loss 
 
     def generate(self, img):
-        sequence = torch.zeros((self.block_size, ), dtype=torch.int)
+        sequence = torch.zeros((self.block_size, ), dtype=torch.int).to(self.device)
         sequence[: -1] = 1
 
         for i in range(self.block_size):
