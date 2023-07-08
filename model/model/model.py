@@ -3,7 +3,6 @@ from model.decoder import Decoder
 import torch
 import torch.nn.functional as F
 import lightning as L
-from torch.optim import Adam
 
 #def __init__(self, img_shape, patch_size, n_embd, num_blocks=6, num_heads=8, dropout=.75, channels=1, output_classes=2, encoder=True, lr=1e-4):
 #def __init__(self, n_embd, block_size, vocab_size, dropout, num_blocks=6, num_heads=8):
@@ -25,7 +24,6 @@ class Img2MathModel(L.LightningModule):
         self.lr = lr
         self.save_hyperparameters()
 
-<<<<<<< HEAD
     def forward(self, img, trg_seq=None, mask=None):
         B = img.shape[0]
         pred_sequence = torch.zeros((B, self.block_size), dtype=torch.int).to(self.device)
@@ -37,32 +35,6 @@ class Img2MathModel(L.LightningModule):
         for i in range(self.block_size):
             logits = self.decoder(pred_sequence, image_encodings) # B, self.vocab_size
             pred = torch.argmax(logits, dim=-1) # (B, 1)
-=======
-    def forward(self, img, input_seq=None, trg_seq=None,  mask=None):
-        #make dummy input seqs for each bach with last element being BOS token
-        if input_seq is None:
-            B = img.shape[0]
-            input_seq = torch.zeros((B, self.block_size), dtype=torch.int)
-            input_seq[-1] = 1
-
-        if self.encodings is None:
-            self.encodings = self.encoder(img)
-
-        encodings = self.encodings
-
-        logits, loss = self.decoder(input_seq, encodings, trg_seq=trg_seq, mask=mask)
-        return logits, loss 
-
-    def generate(self, img):
-        sequence = torch.zeros((self.block_size, ), dtype=torch.int).to(self.device)
-        sequence[-1] = 1
-
-        for i in range(self.block_size):
-            logits, _ = self.forward(img, input_seq=sequence)
-            pred = torch.argmax(logits).view(1)
-            sequence = torch.cat((sequence, pred)).int()
-            sequence = sequence[1:]
->>>>>>> 63e5c8b2439c207f85ae00a73adb96f58ae2731a
 
             pred_sequence = torch.cat((pred_sequence, pred), dim=-1)
             pred_sequence = pred_sequence[:, :1]
@@ -112,6 +84,3 @@ class Img2MathModel(L.LightningModule):
             a = torch.ones(1)
             b = torch.ones(1)
             return a + b
-
-    def configure_optimizers(self):
-        return Adam(self.parameters(), lr=self.lr)
