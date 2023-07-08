@@ -21,7 +21,7 @@ class Decoder(nn.Module):
 
         pass
 
-    def forward(self, input_seq, enc_output, trg_seq=None,  mask=None):
+    def forward(self, input_seq, enc_output, mask=None):
         input_embeddings = self.word_embeddings(input_seq)
         input_embeddings = input_embeddings + self.pos_embed
         x = self.ln(input_embeddings)
@@ -31,16 +31,9 @@ class Decoder(nn.Module):
 
         out = self.ln(x)
 
-        if trg_seq is not None:
-    # if we are given some desired targets also calculate the loss
-            logits = self.head(out)
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), trg_seq.view(-1), ignore_index=-1)
-        else:
-            # inference-time mini-optimization: only forward the lm_head on the very last position
-            logits = self.head(out[:, [-1], :]) # note: using list [-1] to preserve the time dim
-            loss = None
+        logits = self.head(out[:, [-1], :]) # note: using list [-1] to preserve the time dim
          
-        return logits, loss
+        return logits
 
 class DecoderTransformerBlock(nn.Module):
     def __init__(self, n_embd, num_heads, dropout):

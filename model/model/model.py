@@ -1,6 +1,7 @@
 from model.vit import ViT
 from model.decoder import Decoder
 import torch
+import torch.nn.functional as F
 import lightning as L
 from torch.optim import Adam
 
@@ -22,37 +23,30 @@ class Img2MathModel(L.LightningModule):
         self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
         self.decoder = Decoder(n_embd, block_size, vocab_size, dropout, num_blocks=decoder_blocks, num_heads=num_heads)
         self.lr = lr
-        self.encodings = None
         self.save_hyperparameters()
 
-    def forward(self, img, input_seq=None, trg_seq=None,  mask=None):
-        #make dummy input seqs for each bach with last element being BOS token
-        if input_seq is None:
-            B = img.shape[0]
-            input_seq = torch.zeros((B, self.block_size), dtype=torch.int)
-            input_seq[: -1] = 1
+    def forward(self, img, trg_seq=None, mask=None):
+        B = img.shape[0]
+        pred_sequence = torch.zeros((B, self.block_size), dtype=torch.int).to(self.device)
+        pred_sequence[: -1] = 1
+        logit_sequence = torch.zeros(B, self.block_size, self.vocab_size)
 
-        if not self.encodings:
-            self.encodings = self.encoder(img)
-
-        encodings = self.encodings
-
-        logits, loss = self.decoder(input_seq, encodings, trg_seq=trg_seq, mask=mask)
-        return logits, loss 
-
-    def generate(self, img):
-        sequence = torch.zeros((self.block_size, ), dtype=torch.int).to(self.device)
-        sequence[: -1] = 1
+        image_encodings = self.encoder(img)
 
         for i in range(self.block_size):
-            logits, _ = self.forward(img, input_seq=sequence)
-            pred = torch.argmax(logits)
-            sequence = torch.cat((sequence, pred))
-            sequence = sequence[1:]
+            logits = self.decoder(pred_sequence, image_encodings) # B, self.vocab_size
+            pred = torch.argmax(logits, dim=-1) # (B, 1)
 
-        return sequence
+            pred_sequence = torch.cat((pred_sequence, pred), dim=-1)
+            pred_sequence = pred_sequence[:, :1]
+            logit_sequence[:, i] = logits
+            print(i, logit_sequence.shape)
 
-            
+        loss = None
+        if trg_seq:
+            loss = F.cross_entropy(logit_sequence, trg_seq)
+
+        return pred_sequence, loss 
         
 
     def training_step(self, batch, batch_idx):
@@ -65,7 +59,7 @@ class Img2MathModel(L.LightningModule):
             input_mask = torch.cat((zero, input_mask), dim=-1)
             input_mask= input_mask[:, :-1].int()
 
-            _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=input_mask)
+            _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
             self.log('train/loss', loss, on_step=True)
             return loss
         except:
