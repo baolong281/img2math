@@ -4,6 +4,7 @@ import torch
 import numpy as np  
 import torch.nn.functional as F
 import lightning as L
+from torch.optim import Adam
 
 #def __init__(self, img_shape, patch_size, n_embd, num_blocks=6, num_heads=8, dropout=.75, channels=1, output_classes=2, encoder=True, lr=1e-4):
 #def __init__(self, n_embd, block_size, vocab_size, dropout, num_blocks=6, num_heads=8):
@@ -34,7 +35,7 @@ class Img2MathModel(L.LightningModule):
         image_encodings = self.encoder(img)
         out_seq = torch.zeros((B, self.block_size), dtype=torch.long).to(self.device)
 
-        for i in range(10):
+        for i in range(self.block_size):
             logits = self.decoder(pred_sequence, image_encodings) # B, self.vocab_size
             pred = torch.argmax(logits, dim=-1).detach()
 
@@ -63,12 +64,6 @@ class Img2MathModel(L.LightningModule):
         try:
             img, labels = batch
             trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-            zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
-            input_seq = torch.cat((zero, trg_seq), dim=-1)
-            input_seq = input_seq[:, :-1].int()
-            input_mask = torch.cat((zero, input_mask), dim=-1)
-            input_mask= input_mask[:, :-1].int()
-
             _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
             self.log('train/loss', loss, on_step=True)
             return loss
@@ -82,16 +77,13 @@ class Img2MathModel(L.LightningModule):
         try:
             img, labels = batch
             trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-            zero = torch.zeros(trg_seq.shape[0], 1).to(self.device)
-            input_seq = torch.cat((zero, trg_seq), dim=-1)
-            input_seq = input_seq[:, :-1].int()
-            input_mask = torch.cat((zero, input_mask), dim=-1)
-            input_mask= input_mask[:, :-1].int()
-
-            _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=input_mask)
+            _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
             self.log('val/loss', loss, on_step=True)
             return loss
         except:
             a = torch.ones(1)
             b = torch.ones(1)
             return a + b
+
+    def configure_optimizers(self):
+        return Adam(self.parameters(), lr=self.lr)
