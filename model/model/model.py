@@ -61,29 +61,19 @@ class Img2MathModel(L.LightningModule):
         
 
     def training_step(self, batch, batch_idx):
-        try:
-            img, labels = batch
-            trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-            _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
-            self.log('train/loss', loss, on_step=True)
-            return loss
-        except:
-            a = torch.ones(1)
-            b = torch.ones(1)
-            return a + b
+        img, labels = batch
+        trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
+        _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
+        self.log('train/loss', loss, on_step=True)
+        return loss
 
 
     def validation_step(self, batch, batch_idx):
-        try:
-            img, labels = batch
-            trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-            _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
-            self.log('val/loss', loss, on_step=True)
-            return loss
-        except:
-            a = torch.ones(1)
-            b = torch.ones(1)
-            return a + b
+        img, labels = batch
+        trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
+        _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
+        self.log('val/loss', loss, on_step=True)
+        return loss
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.lr)
