@@ -1,6 +1,7 @@
 from model.vit import ViT
 from model.decoder import Decoder
 import torch
+import numpy as np  
 import torch.nn.functional as F
 import lightning as L
 
@@ -9,7 +10,7 @@ import lightning as L
 #def forward(self, input_seq, enc_output, trg_seq=None,  mask=None):
 
 class Img2MathModel(L.LightningModule):
-    def __init__(self, n_embd, block_size, vocab_size, dropout, img_shape, patch_size, encoder_blocks=4, decoder_blocks=6, num_heads=8, lr=1e-4):
+    def __init__(self, n_embd, block_size, vocab_size, dropout, img_shape, patch_size, encoder_blocks=4, decoder_blocks=6, num_heads=8, lr=1e-4, teacher_rate=.70):
         super().__init__()
         self.n_embd = n_embd
         self.block_size = block_size
@@ -22,30 +23,40 @@ class Img2MathModel(L.LightningModule):
         self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
         self.decoder = Decoder(n_embd, block_size, vocab_size, dropout, num_blocks=decoder_blocks, num_heads=num_heads)
         self.lr = lr
+        self.teacher_rate = teacher_rate
         self.save_hyperparameters()
 
     def forward(self, img, trg_seq=None, mask=None):
         B = img.shape[0]
-        pred_sequence = torch.zeros((B, self.block_size), dtype=torch.int).to(self.device)
+        pred_sequence = torch.zeros((B, self.block_size), dtype=torch.int).detach().to(self.device)
         pred_sequence[: -1] = 1
-        logit_sequence = torch.zeros(B, self.block_size, self.vocab_size)
-
+        logit_sequence = torch.zeros(B, self.block_size, self.vocab_size).to(self.device)
         image_encodings = self.encoder(img)
+        out_seq = torch.zeros((B, self.block_size), dtype=torch.long).to(self.device)
 
-        for i in range(self.block_size):
+        for i in range(10):
             logits = self.decoder(pred_sequence, image_encodings) # B, self.vocab_size
-            pred = torch.argmax(logits, dim=-1) # (B, 1)
+            pred = torch.argmax(logits, dim=-1).detach()
 
-            pred_sequence = torch.cat((pred_sequence, pred), dim=-1)
-            pred_sequence = pred_sequence[:, :1]
-            logit_sequence[:, i] = logits
-            print(i, logit_sequence.shape)
+            out_seq = torch.cat((out_seq, pred), dim=-1)
+
+            if np.random.rand() < self.teacher_rate and trg_seq is not None:
+                pred = torch.zeros((B, 1), dtype=torch.long).to(self.device)
+                pred[torch.arange(B), 0] = trg_seq[torch.arange(B), i]
+
+            pred_sequence = torch.cat((pred_sequence, pred), dim=-1).detach()
+            pred_sequence = pred_sequence[:, 1:]
+
+            if trg_seq is not None:
+                logit_sequence = torch.cat((logit_sequence, logits), dim=1)
+                logit_sequence = logit_sequence[:, 1:]
+
 
         loss = None
-        if trg_seq:
-            loss = F.cross_entropy(logit_sequence, trg_seq)
+        if trg_seq is not None:
+            loss = F.cross_entropy(logit_sequence.transpose(1, 2), trg_seq)
 
-        return pred_sequence, loss 
+        return out_seq, loss 
         
 
     def training_step(self, batch, batch_idx):
