@@ -44,7 +44,7 @@ def main():
 
     logger = WandbLogger(project='img2math')
 
-    trainer = L.Trainer(max_epochs=EPOCHS, log_every_n_steps=20, deterministic=True,
+    trainer = L.Trainer(max_epochs=EPOCHS, log_every_n_steps=20, deterministic=False,
                         logger=logger, accelerator=args.accelerator)
 
     trainer.fit(model, data.train, data.test)
