@@ -66,7 +66,7 @@ def main():
             })
             
     data = Im2LatexDataset(path_to_data="../data/",
-                           tokenizer="../data/tokenizer.json", img_dims=IMG_DIMS, batch_size=BATCH_SIZE, device=device)
+                           tokenizer=TOKENIZER_FILE, img_dims=IMG_DIMS, batch_size=BATCH_SIZE, device=device)
     vocab_size = len(data.tokenizer.get_vocab())
 
     batch = next(iter(data.val))
@@ -75,8 +75,8 @@ def main():
 
     logger = WandbLogger(project='img2math')
 
-    trainer = L.Trainer(limit_train_batches=50, max_epochs=EPOCHS, log_every_n_steps=5, deterministic=False,
-                        logger=logger, limit_val_batches=.25, accelerator=args.accelerator, callbacks=[ImagePredictionLogger(batch)])
+    trainer = L.Trainer(max_epochs=EPOCHS, log_every_n_steps=5, deterministic=False,
+                        logger=logger, limit_val_batches=.10, accelerator=args.accelerator, callbacks=[ImagePredictionLogger(batch)])
 
     trainer.fit(model, data.train, data.test)
     wandb.finish()

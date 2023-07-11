@@ -22,9 +22,14 @@ class Decoder(nn.Module):
         pass
 
     def forward(self, input_seq, enc_output, trg_seq=None,  mask=None):
+        B = input_seq.shape[0]
+
         input_embeddings = self.word_embeddings(input_seq)
         input_embeddings = input_embeddings + self.pos_embed
         x = self.ln(input_embeddings)
+
+        if mask is None:
+            mask = torch.ones(B, 1)
 
         for layer in self.transformer_blocks:
             x = layer(x, enc_output, mask)
@@ -34,16 +39,19 @@ class Decoder(nn.Module):
 
         if trg_seq is not None :
             # if we are given some desired targets also calculate the loss
+            total_loss = torch.zeros(1).to(torch.device('mps'))
+            start = mask.argmax(dim=-1)
             logits = self.head(out)
-            print(logits.shape, trg_seq.shape)
-            loss = F.cross_entropy(logits.transpose(1, 2), trg_seq)
-            print("functional")
+
+            for i in range(B):
+                loss = F.cross_entropy(logits[i, start[i]:, :], trg_seq[i, start[i]:])
+                total_loss += loss * (1/B)
         else:
             # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.head(out[:, [-1], :]) # note: using list [-1] to preserve the time dim
-            loss = None
+            total_loss = None
          
-        return logits, loss
+        return logits, total_loss
 
 class DecoderTransformerBlock(nn.Module):
     def __init__(self, n_embd, num_heads, dropout):

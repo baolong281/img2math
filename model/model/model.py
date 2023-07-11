@@ -25,6 +25,7 @@ class Img2MathModel(L.LightningModule):
         self.save_hyperparameters()
 
     def forward(self, img, input_seq, trg_seq=None,  mask=None):
+
         #make dummy input seqs for each bach with last element being BOS token
         encodings = self.encoder(img)
 
