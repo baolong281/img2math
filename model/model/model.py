@@ -1,8 +1,6 @@
 from model.vit import ViT
 from model.decoder import Decoder
 import torch
-import numpy as np  
-import torch.nn.functional as F
 import lightning as L
 from torch.optim import Adam
 
@@ -11,7 +9,7 @@ from torch.optim import Adam
 #def forward(self, input_seq, enc_output, trg_seq=None,  mask=None):
 
 class Img2MathModel(L.LightningModule):
-    def __init__(self, n_embd, block_size, vocab_size, dropout, img_shape, patch_size, encoder_blocks=4, decoder_blocks=6, num_heads=8, lr=1e-4, teacher_rate=.70):
+    def __init__(self, n_embd, block_size, vocab_size, dropout, img_shape, patch_size, encoder_blocks=4, decoder_blocks=6, num_heads=8, lr=1e-4):
         super().__init__()
         self.n_embd = n_embd
         self.block_size = block_size
@@ -24,56 +22,65 @@ class Img2MathModel(L.LightningModule):
         self.encoder = ViT(img_shape, patch_size, n_embd, num_blocks=encoder_blocks, num_heads=num_heads, dropout=dropout)
         self.decoder = Decoder(n_embd, block_size, vocab_size, dropout, num_blocks=decoder_blocks, num_heads=num_heads)
         self.lr = lr
-        self.teacher_rate = teacher_rate
         self.save_hyperparameters()
 
-    def forward(self, img, trg_seq=None, mask=None):
+    def forward(self, img, input_seq, trg_seq=None,  mask=None):
+        #make dummy input seqs for each bach with last element being BOS token
+        encodings = self.encoder(img)
+
+        logits, loss = self.decoder(input_seq, encodings, trg_seq=trg_seq, mask=mask)
+        return logits, loss 
+
+    def generate(self, img):
         B = img.shape[0]
-        pred_sequence = torch.zeros((B, self.block_size), dtype=torch.int).detach().to(self.device)
-        pred_sequence[: -1] = 1
-        logit_sequence = torch.zeros(B, self.block_size, self.vocab_size).to(self.device)
-        image_encodings = self.encoder(img)
-        out_seq = torch.zeros((B, self.block_size), dtype=torch.long).to(self.device)
+        sequence = torch.zeros((B, self.block_size), dtype=torch.int).to(self.device)
+        sequence[:, -1] = 1
 
         for i in range(self.block_size):
-            logits = self.decoder(pred_sequence, image_encodings) # B, self.vocab_size
-            pred = torch.argmax(logits, dim=-1).detach()
+            logits, _ = self.forward(img, input_seq=sequence)
+            pred = torch.argmax(logits, dim=-1)
+            sequence = torch.cat((sequence, pred), dim=1).int()
+            sequence = sequence[:, 1:]
 
-            out_seq = torch.cat((out_seq, pred), dim=-1)
-
-            if np.random.rand() < self.teacher_rate and trg_seq is not None:
-                pred = torch.zeros((B, 1), dtype=torch.long).to(self.device)
-                pred[torch.arange(B), 0] = trg_seq[torch.arange(B), i]
-
-            pred_sequence = torch.cat((pred_sequence, pred), dim=-1).detach()
-            pred_sequence = pred_sequence[:, 1:]
-
-            if trg_seq is not None:
-                logit_sequence = torch.cat((logit_sequence, logits), dim=1)
-                logit_sequence = logit_sequence[:, 1:]
-
-
-        loss = None
-        if trg_seq is not None:
-            loss = F.cross_entropy(logit_sequence.transpose(1, 2), trg_seq)
-
-        return out_seq, loss 
-        
+        return sequence
 
     def training_step(self, batch, batch_idx):
         img, labels = batch
-        trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-        _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
+        B = img.shape[0]
+        trg_seq, mask = labels['input_ids'], labels['attention_mask']
+
+        #generating triangle mask
+        # tokens_start = pre_mask.argmax() + 1
+        # input_mask = torch.ones(B, self.block_size, tokens_start, dtype=torch.bool).triu(diagonal=tokens_start).to(self.device)
+        # print(input_mask, trg_seq)
+
+        zero = torch.zeros(B, 1).to(self.device)
+        input_seq = torch.cat((zero, trg_seq), dim=-1)
+        input_seq = input_seq[:, :-1].int().to(self.device)
+
+        _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq, mask=mask)
+        print(loss)
         self.log('train/loss', loss, on_step=True)
         return loss
 
-
     def validation_step(self, batch, batch_idx):
         img, labels = batch
-        trg_seq, input_mask = labels['input_ids'], labels['attention_mask']
-        _, loss  = self.forward(img, trg_seq=trg_seq, mask=input_mask)
+        B = img.shape[0]
+        trg_seq, pre_mask = labels['input_ids'], labels['attention_mask']
+
+        #generating triangle mask
+        # tokens_start = pre_mask.argmax() + 1
+        # input_mask = torch.ones(B, self.block_size, tokens_start, dtype=torch.bool).triu(diagonal=tokens_start).to(self.device)
+        # print(input_mask, trg_seq)
+
+        zero = torch.zeros(B, 1).to(self.device)
+        input_seq = torch.cat((zero, trg_seq), dim=-1)
+        input_seq = input_seq[:, :-1].int().to(self.device)
+
+        _, loss  = self.forward(img, input_seq=input_seq, trg_seq=trg_seq)
         self.log('val/loss', loss, on_step=True)
         return loss
+
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.lr)

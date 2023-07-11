@@ -21,7 +21,7 @@ class Decoder(nn.Module):
 
         pass
 
-    def forward(self, input_seq, enc_output, mask=None):
+    def forward(self, input_seq, enc_output, trg_seq=None,  mask=None):
         input_embeddings = self.word_embeddings(input_seq)
         input_embeddings = input_embeddings + self.pos_embed
         x = self.ln(input_embeddings)
@@ -30,10 +30,20 @@ class Decoder(nn.Module):
             x = layer(x, enc_output, mask)
 
         out = self.ln(x)
+        # print(out.shape, out)
 
-        logits = self.head(out[:, [-1], :]) # note: using list [-1] to preserve the time dim
+        if trg_seq is not None :
+            # if we are given some desired targets also calculate the loss
+            logits = self.head(out)
+            print(logits.shape, trg_seq.shape)
+            loss = F.cross_entropy(logits.transpose(1, 2), trg_seq)
+            print("functional")
+        else:
+            # inference-time mini-optimization: only forward the lm_head on the very last position
+            logits = self.head(out[:, [-1], :]) # note: using list [-1] to preserve the time dim
+            loss = None
          
-        return logits
+        return logits, loss
 
 class DecoderTransformerBlock(nn.Module):
     def __init__(self, n_embd, num_heads, dropout):
@@ -92,13 +102,13 @@ class DecoderAttention(nn.Module):
         # Transpose for attention dot product: b x n x lq x dv
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
 
-        if mask is not None:
-            mask = mask.unsqueeze(1)
-            mask = mask.unsqueeze(1)
-            if mask.dtype != torch.float32:
-                mask = mask.float()
+        # if mask is not None:
+        #     mask = mask.unsqueeze(1)
+        #     mask = mask.unsqueeze(1)
+        #     if mask.dtype != torch.float32:
+        #         mask = mask.float()
 
-        q = F.scaled_dot_product_attention(q, k, v, mask)
+        q = F.scaled_dot_product_attention(q, k, v, is_causal=True)
 
         # Transpose to move the head dimension back: b x lq x n x dv
         # Combine the last two dimensions to concatenate all the heads together: b x lq x (n*dv)

@@ -87,7 +87,7 @@ class Im2LatexDataset:
                 add_special_tokens=True,
             )
 
-            return images, tokens
+            return images.to(device), tokens.to(device)
 
         self.train = DataLoader(
             train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn, 
