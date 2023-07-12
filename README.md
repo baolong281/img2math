@@ -12,4 +12,4 @@ yarn build
 
 todo:
 
-make the model work
+- make the model work
