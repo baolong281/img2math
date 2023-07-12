@@ -9,3 +9,7 @@ yarn start
 ```
 yarn build
 ```
+
+todo:
+
+make the model work
